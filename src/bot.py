@@ -272,7 +272,31 @@ Fear &amp; Greed: {fear_greed}
 ━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Not financial advice. Always use Stop Loss.</i>"""
 
-    await send_telegram(msg)
+    # Split σε 2 μηνύματα
+    msg1 = f"""📊 <b>MacroTrader Daily Briefing</b>
+🕗 {now} (Athens)
+━━━━━━━━━━━━━━━━━━━━
+
+<b>LIVE PRICES</b>
+{chr(10).join(lines) if lines else 'N/A'}
+
+<b>SENTIMENT</b>
+Fear &amp; Greed: {fear_greed}
+
+<b>UPCOMING EVENTS</b>
+{calendar_text}"""
+
+    msg2 = f"""🎯 <b>TODAY'S SETUP</b>
+━━━━━━━━━━━━━━━━━━━━
+
+{analysis[:3500]}
+
+━━━━━━━━━━━━━━━━━━━━
+⚠️ <i>Not financial advice. Always use Stop Loss.</i>"""
+
+    await send_telegram(msg1)
+    await asyncio.sleep(1)
+    await send_telegram(msg2)
     print(f"✅ Sent at {now}")
 
 if __name__ == "__main__":
