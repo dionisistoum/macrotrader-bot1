@@ -172,12 +172,14 @@ RULES:
 
 Give ONE setup or "No setup today."
 
-FORMAT:
+FORMAT — use EXACTLY this, no tables, no markdown headers:
+
 🎯 ASSET: [name]
 📈 DIRECTION: BUY or SELL
 💪 CONVICTION: High / Medium-High
 
-📊 REASON: [2-3 sentences]
+📊 REASON:
+[2-3 sentences max]
 
 ⚙️ LEVELS:
 - Entry: $[x]
@@ -186,13 +188,17 @@ FORMAT:
 - TP2: $[x]
 - R:R: 1:[x]
 
-💰 POSITION:
-- eToro amount: $[x]
+💰 POSITION (eToro):
+- Amount: $[x]
 - Leverage: x[n]
 - Max loss: $[x]
 
-⏰ ENTRY TIME: [Athens time]
-🚫 INVALIDATION: [one sentence]"""
+⏰ ENTRY: [Athens time / condition]
+
+🚫 INVALIDATION:
+[one sentence]
+
+NO tables. NO markdown. NO headers. NO asterisks. Plain text with emojis only.
 
     try:
         async with httpx.AsyncClient() as client:
