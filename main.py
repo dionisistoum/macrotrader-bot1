@@ -20,6 +20,7 @@ def job():
     asyncio.run(run_daily_briefing())
 
 schedule.every().day.at("05:00").do(job)
+schedule.every().day.at("12:30").do(job) 
 
 print(f"✅ Scheduler running. Athens: {datetime.now(ATHENS_TZ).strftime('%H:%M')}")
 
