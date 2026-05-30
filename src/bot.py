@@ -289,7 +289,7 @@ Fear &amp; Greed: {fear_greed}
     msg2 = f"""🎯 <b>TODAY'S SETUP</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-{analysis[:3500]}
+{analysis[:4000]}
 
 ━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Not financial advice. Always use Stop Loss.</i>"""
