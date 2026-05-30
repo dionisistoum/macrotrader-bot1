@@ -22,15 +22,10 @@ WATCHLIST = [
 
 ATHENS_TZ = pytz.timezone("Europe/Athens")
 
-# ─── PRICES ───────────────────────────────────────────────
-
 async def fetch_finnhub_quote(client, symbol):
     try:
-        r = await client.get(
-            "https://finnhub.io/api/v1/quote",
-            params={"symbol": symbol, "token": FINNHUB_KEY},
-            timeout=10
-        )
+        r = await client.get("https://finnhub.io/api/v1/quote",
+            params={"symbol": symbol, "token": FINNHUB_KEY}, timeout=10)
         d = r.json()
         if d.get("c", 0) > 0:
             return {"price": d["c"], "change": d["d"], "pct": d["dp"], "high": d["h"], "low": d["l"]}
@@ -40,11 +35,8 @@ async def fetch_finnhub_quote(client, symbol):
 
 async def fetch_td_quote(client, symbol):
     try:
-        r = await client.get(
-            "https://api.twelvedata.com/price",
-            params={"symbol": symbol, "apikey": TD_KEY},
-            timeout=10
-        )
+        r = await client.get("https://api.twelvedata.com/price",
+            params={"symbol": symbol, "apikey": TD_KEY}, timeout=10)
         d = r.json()
         if d.get("price"):
             return {"price": float(d["price"]), "change": None, "pct": None}
@@ -65,15 +57,10 @@ async def fetch_all_prices(client):
         prices[asset["sym"]] = results[i] if results[i] and results[i].get("price") else None
     return prices
 
-# ─── NEWS ─────────────────────────────────────────────────
-
 async def fetch_news(client):
     try:
-        r = await client.get(
-            "https://finnhub.io/api/v1/news",
-            params={"category": "general", "token": FINNHUB_KEY},
-            timeout=10
-        )
+        r = await client.get("https://finnhub.io/api/v1/news",
+            params={"category": "general", "token": FINNHUB_KEY}, timeout=10)
         items = r.json()
         if isinstance(items, list):
             return [i.get("headline", "") for i in items[:6] if i.get("headline")]
@@ -81,65 +68,48 @@ async def fetch_news(client):
         pass
     return []
 
-# ─── FEAR & GREED ─────────────────────────────────────────
-
 async def fetch_fear_greed(client):
     try:
-        r = await client.get(
-            "https://api.alternative.me/fng/?limit=1",
-            timeout=10
-        )
-        d = r.json()
-        data = d["data"][0]
-        score = int(data["value"])
-        label = data["value_classification"]
+        r = await client.get("https://api.alternative.me/fng/?limit=1", timeout=10)
+        d = r.json()["data"][0]
+        score = int(d["value"])
+        label = d["value_classification"]
         emoji = "🟢" if score < 30 else "🔴" if score > 70 else "🟡"
         return f"{emoji} {score}/100 — {label}"
     except Exception:
         pass
     return "N/A"
 
-# ─── ECONOMIC CALENDAR ────────────────────────────────────
-
 async def fetch_economic_calendar(client):
     try:
         today = datetime.now(ATHENS_TZ).strftime("%Y-%m-%d")
         week_end = (datetime.now(ATHENS_TZ) + timedelta(days=5)).strftime("%Y-%m-%d")
-        r = await client.get(
-            "https://finnhub.io/api/v1/calendar/economic",
-            params={"from": today, "to": week_end, "token": FINNHUB_KEY},
-            timeout=10
-        )
-        d = r.json()
-        events = d.get("economicCalendar", [])
-        # Φιλτράρισε μόνο high impact
-        high_impact = []
-        keywords = ["NFP", "CPI", "FOMC", "Fed", "GDP", "Unemployment", 
+        r = await client.get("https://finnhub.io/api/v1/calendar/economic",
+            params={"from": today, "to": week_end, "token": FINNHUB_KEY}, timeout=10)
+        events = r.json().get("economicCalendar", [])
+        keywords = ["NFP", "CPI", "FOMC", "Fed", "GDP", "Unemployment",
                    "Payroll", "Inflation", "Rate", "PMI", "Retail"]
+        high_impact = []
         for e in events[:20]:
             name = e.get("event", "")
             date = e.get("time", "")[:10]
             if any(k.lower() in name.lower() for k in keywords):
-                high_impact.append(f"  📅 {date}: {name}")
-        return high_impact[:6] if high_impact else ["  Δεν υπάρχουν major events αυτή την εβδομάδα"]
-    except Exception as e:
+                high_impact.append(f"  {date}: {name}")
+        return high_impact[:6] if high_impact else ["  No major events this week"]
+    except Exception:
         pass
     return ["  Calendar N/A"]
 
-# ─── CLAUDE ANALYSIS ──────────────────────────────────────
-
 async def get_claude_analysis(prices, news, fear_greed, calendar):
     now_athens = datetime.now(ATHENS_TZ).strftime("%A %d %B %Y, %H:%M")
-
     price_lines = []
     for asset in WATCHLIST:
         q = prices.get(asset["sym"])
         if q and q.get("price"):
             chg = f"{q['change']:+.2f} ({q['pct']:+.2f}%)" if q.get("change") else "N/A"
-            price_lines.append(f"  {asset['sym']} ({asset['name']}): ${q['price']:.2f} | {chg}")
+            price_lines.append(f"  {asset['sym']}: ${q['price']:.2f} | {chg}")
         else:
             price_lines.append(f"  {asset['sym']}: N/A")
-
     news_text = "\n".join(f"  - {h}" for h in news) if news else "  No news"
     calendar_text = "\n".join(calendar)
 
@@ -148,57 +118,42 @@ async def get_claude_analysis(prices, news, fear_greed, calendar):
 LIVE PRICES:
 {chr(10).join(price_lines)}
 
-MARKET SENTIMENT (Fear & Greed Index):
-  {fear_greed}
+FEAR & GREED: {fear_greed}
 
 ECONOMIC CALENDAR (next 5 days):
 {calendar_text}
 
-LATEST NEWS:
+NEWS:
 {news_text}
 
-TRADER PROFILE:
-- Platform: eToro CFD
-- Account: $5,000
-- Max risk: $50/trade (1%)
-- Max leverage: Gold x3 / ETFs x2
-- Style: Day trade / Swing 1-3 days
+TRADER: eToro CFD, $5000, max risk $50/trade, Gold x3 leverage / ETFs x2.
+RULES: No SELL in Extreme Fear. No BUY in Extreme Greed. No trade on NFP/CPI/FOMC day.
 
-RULES:
-- If a HIGH IMPACT event (NFP, CPI, FOMC) is TODAY → say "No trade today — major event risk"
-- If Fear & Greed > 80 (Extreme Greed) → avoid BUY setups
-- If Fear & Greed < 20 (Extreme Fear) → avoid SELL setups
-- Only give a trade if there is CLEAR edge
+Give ONE setup or say: No setup today.
 
-Give ONE setup or "No setup today."
+USE EXACTLY THIS FORMAT — plain text, no tables, no markdown:
 
-FORMAT — use EXACTLY this, no tables, no markdown headers:
+ASSET: [name]
+DIRECTION: BUY or SELL
+CONVICTION: High or Medium-High
 
-🎯 ASSET: [name]
-📈 DIRECTION: BUY or SELL
-💪 CONVICTION: High / Medium-High
+REASON:
+[2-3 sentences only]
 
-📊 REASON:
-[2-3 sentences max]
+LEVELS:
+Entry: $[x]
+Stop Loss: $[x]
+TP1: $[x]
+TP2: $[x]
+RR: 1:[x]
 
-⚙️ LEVELS:
-- Entry: $[x]
-- Stop Loss: $[x]
-- TP1: $[x]
-- TP2: $[x]
-- R:R: 1:[x]
+POSITION:
+eToro amount: $[x]
+Leverage: x[n]
+Max loss: $[x]
 
-💰 POSITION (eToro):
-- Amount: $[x]
-- Leverage: x[n]
-- Max loss: $[x]
-
-⏰ ENTRY: [Athens time / condition]
-
-🚫 INVALIDATION:
-[one sentence]
-
-NO tables. NO markdown. NO headers. NO asterisks. Plain text with emojis only.
+ENTRY TIME: [Athens time]
+INVALIDATION: [one sentence]"""
 
     try:
         async with httpx.AsyncClient() as client:
@@ -211,16 +166,14 @@ NO tables. NO markdown. NO headers. NO asterisks. Plain text with emojis only.
                 },
                 json={
                     "model": "claude-sonnet-4-6",
-                    "max_tokens": 600,
+                    "max_tokens": 500,
                     "messages": [{"role": "user", "content": prompt}]
                 },
                 timeout=30
             )
             return r.json()["content"][0]["text"]
     except Exception as e:
-        return f"⚠️ Analysis error: {e}"
-
-# ─── TELEGRAM ─────────────────────────────────────────────
+        return f"Analysis error: {e}"
 
 async def send_telegram(text):
     async with httpx.AsyncClient() as client:
@@ -230,11 +183,9 @@ async def send_telegram(text):
             timeout=10
         )
 
-# ─── MAIN ─────────────────────────────────────────────────
-
 async def run_daily_briefing():
     now = datetime.now(ATHENS_TZ).strftime("%d/%m/%Y %H:%M")
-    await send_telegram(f"⏳ <b>MacroTrader</b> — Φορτώνω δεδομένα... ({now})")
+    await send_telegram(f"⏳ <b>MacroTrader</b> — Loading... ({now})")
 
     async with httpx.AsyncClient() as client:
         prices, news, fear_greed, calendar = await asyncio.gather(
@@ -246,7 +197,6 @@ async def run_daily_briefing():
 
     analysis = await get_claude_analysis(prices, news, fear_greed, calendar)
 
-    # Price summary
     lines = []
     for asset in WATCHLIST:
         q = prices.get(asset["sym"])
@@ -257,28 +207,6 @@ async def run_daily_briefing():
 
     calendar_text = "\n".join(calendar)
 
-    msg = f"""📊 <b>MacroTrader Daily Briefing</b>
-🕗 {now} (Athens)
-━━━━━━━━━━━━━━━━━━━━
-
-<b>LIVE PRICES</b>
-{chr(10).join(lines) if lines else 'N/A'}
-
-<b>SENTIMENT</b>
-Fear &amp; Greed: {fear_greed}
-
-<b>UPCOMING EVENTS</b>
-{calendar_text}
-
-━━━━━━━━━━━━━━━━━━━━
-<b>TODAY'S SETUP</b>
-
-{analysis}
-
-━━━━━━━━━━━━━━━━━━━━
-⚠️ <i>Not financial advice. Always use Stop Loss.</i>"""
-
-    # Split σε 2 μηνύματα
     msg1 = f"""📊 <b>MacroTrader Daily Briefing</b>
 🕗 {now} (Athens)
 ━━━━━━━━━━━━━━━━━━━━
@@ -295,7 +223,7 @@ Fear &amp; Greed: {fear_greed}
     msg2 = f"""🎯 <b>TODAY'S SETUP</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-{analysis[:4096]}
+{analysis}
 
 ━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Not financial advice. Always use Stop Loss.</i>"""
